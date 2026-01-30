@@ -1,0 +1,1 @@
+/usr/bin/c++     CMakeFiles/udp_socketcan_bridge.dir/src/main.cpp.o CMakeFiles/udp_socketcan_bridge.dir/src/bridge.cpp.o CMakeFiles/udp_socketcan_bridge.dir/src/config.cpp.o CMakeFiles/udp_socketcan_bridge.dir/src/protocol.cpp.o  -o udp_socketcan_bridge  -lrt 

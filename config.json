@@ -1,0 +1,24 @@
+{
+  "server": {
+    "ip": "127.0.0.1",
+    "heartbeat_ms": 1000,
+    "reconnect_timeout_ms": 5000
+  },
+  "ports": [
+    {
+      "udp_listen_port": 5555,
+      "udp_send_port": 5556,
+      "channels": [
+        {
+          "vcan_name": "vcan0",
+          "tx_channel_id": 0,
+          "id_range": {
+            "min": "0x000",
+            "max": "0x7FF"
+          },
+          "bitrate": 500000
+        }
+      ]
+    }
+  ]
+}
