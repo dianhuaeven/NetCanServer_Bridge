@@ -1,3 +1,0 @@
-/home/dianhua/Code/udp_socketcan_bridge/build/CMakeFiles/rebuild_cache.dir
-/home/dianhua/Code/udp_socketcan_bridge/build/CMakeFiles/edit_cache.dir
-/home/dianhua/Code/udp_socketcan_bridge/build/CMakeFiles/udp_socketcan_bridge.dir
