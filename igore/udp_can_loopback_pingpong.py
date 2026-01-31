@@ -1,10 +1,11 @@
-import socket
-import struct
-import time
-import sys
+import argparse
+import json
 import os
 import random
-import json
+import socket
+import struct
+import sys
+import time
 
 def load_config():
     try:
@@ -21,10 +22,26 @@ def resolve_port(port_cfg, key):
 UDP_FMT = ">BI8s"  # 13字节大端序 UDP
 CAN_FMT = "=IB3s8s" # 16字节标准 CAN (Linux 内核格式)
 
-def run_ping_pong_test():
+def run_ping_pong_test(port_index: int, channel_index: int):
     config = load_config()
-    port_cfg = config["ports"][0]
-    channel_cfg = port_cfg["channels"][0]
+    ports = config.get("ports") or []
+    if not ports:
+        print("错误: config.json 中没有 ports 配置")
+        return
+    if port_index < 0 or port_index >= len(ports):
+        print(f"错误: ports 索引 {port_index} 超出范围 (0-{len(ports)-1})")
+        return
+    port_cfg = ports[port_index]
+
+    channels = port_cfg.get("channels") or []
+    if not channels:
+        print(f"错误: ports[{port_index}] 未配置 channels")
+        return
+    if channel_index < 0 or channel_index >= len(channels):
+        print(f"错误: channels 索引 {channel_index} 超出范围 (0-{len(channels)-1})")
+        return
+
+    channel_cfg = channels[channel_index]
     bridge_listen_port = resolve_port(port_cfg, "udp_listen_port")
     script_listen_port = resolve_port(port_cfg, "udp_send_port")
     server_ip = config["server"]["ip"]
@@ -53,6 +70,7 @@ def run_ping_pong_test():
         return
 
     print(f"--- 乒乓全链路回环测试 (带带宽显示) ---")
+    print(f"使用 ports[{port_index}], channels[{channel_index}] -> {vcan_iface}")
     print(f"路径: CAN({vcan_iface}) -> Bridge(send→UDP {server_ip}:{script_listen_port}) -> "
           f"脚本UDP -> Bridge(listen {server_ip}:{bridge_listen_port}) -> CAN")
     print("-" * 60)
@@ -148,8 +166,15 @@ def run_ping_pong_test():
         print(f"平均速率: {stats['success']/duration:.1f} PPS")
         print(f"平均带宽: {(stats['success']*13*8)/(duration*1000000):.4f} Mbps")
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="单通道 UDP↔CAN 乒乓回环测试")
+    parser.add_argument("--port-index", type=int, default=0, help="选择 config.json 中的 ports 索引")
+    parser.add_argument("--channel-index", type=int, default=0, help="选择 ports[*].channels 索引")
+    return parser.parse_args()
+
 if __name__ == "__main__":
     if os.getuid() != 0:
         print("请使用 sudo 运行此脚本")
     else:
-        run_ping_pong_test()
+        args = parse_args()
+        run_ping_pong_test(args.port_index, args.channel_index)

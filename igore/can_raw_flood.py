@@ -1,3 +1,4 @@
+import argparse
 import socket
 import struct
 import time
@@ -40,5 +41,11 @@ def stress_can_sender(iface="vcan0"):
     finally:
         s.close()
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="向指定 CAN 接口持续灌入随机帧")
+    parser.add_argument("--iface", default="vcan0", help="CAN 接口名称 (默认: vcan0)")
+    return parser.parse_args()
+
 if __name__ == "__main__":
-    stress_can_sender("vcan0")
+    args = parse_args()
+    stress_can_sender(args.iface)

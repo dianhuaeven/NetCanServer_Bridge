@@ -1,11 +1,12 @@
-import socket
-import struct
-import time
-import threading
+import argparse
 import json
-import sys
 import os
 import random
+import socket
+import struct
+import sys
+import threading
+import time
 
 # --- 协议定义 ---
 UDP_PROTOCOL_FMT = ">BI8s" # 13字节大端序协议 (1字节Info + 4字节ID + 8字节Data)
@@ -86,9 +87,27 @@ def main():
         print("错误: 请使用 sudo 运行此脚本以访问 SocketCAN。")
         sys.exit(1)
 
+    args = parse_args()
     config = load_config()
-    port_cfg = config['ports'][0]
-    vcan_iface = port_cfg['channels'][0]['vcan_name']
+    ports = config.get('ports') or []
+    if not ports:
+        print("错误: config.json 中未配置任何 ports")
+        sys.exit(1)
+    if args.port_index < 0 or args.port_index >= len(ports):
+        print(f"错误: port 索引 {args.port_index} 超出范围 (0-{len(ports)-1})")
+        sys.exit(1)
+
+    port_cfg = ports[args.port_index]
+    channels = port_cfg.get('channels') or []
+    if not channels:
+        print(f"错误: ports[{args.port_index}] 未配置 channels")
+        sys.exit(1)
+    if args.channel_index < 0 or args.channel_index >= len(channels):
+        print(f"错误: channel 索引 {args.channel_index} 超出范围 (0-{len(channels)-1})")
+        sys.exit(1)
+
+    channel_cfg = channels[args.channel_index]
+    vcan_iface = args.iface or channel_cfg['vcan_name']
     udp_port = resolve_listen_port(port_cfg)
     if udp_port is None:
         print("错误: 配置中缺少 udp_listen_port/udp_port")
@@ -98,6 +117,7 @@ def main():
 
     print(f"--- 桥接器 RX 路径全链路压测 ---")
     print(f"流向: [Python UDP 发送] -> UDP {udp_ip}:{udp_port} -> [Bridge] -> {vcan_iface} -> [Python CAN 接收]")
+    print(f"使用 ports[{args.port_index}], channels[{args.channel_index}]")
     
     # 启动线程
     t_udp = threading.Thread(target=udp_sender_thread, args=(udp_ip, udp_port), daemon=True)
@@ -150,6 +170,13 @@ def main():
 
     except KeyboardInterrupt:
         print(f"\n\n测试结束。总计还原 CAN 帧: {stats['can_rcvd']}")
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="UDP→CAN 压测脚本")
+    parser.add_argument("--port-index", type=int, default=0, help="选择 config.json 中的 ports 索引")
+    parser.add_argument("--channel-index", type=int, default=0, help="选择 ports[*].channels 的索引")
+    parser.add_argument("--iface", help="覆盖使用的 CAN 接口名称")
+    return parser.parse_args()
 
 if __name__ == "__main__":
     main()

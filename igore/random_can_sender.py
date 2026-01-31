@@ -1,3 +1,4 @@
+import argparse
 import socket
 import struct
 import random
@@ -12,7 +13,7 @@ if not hasattr(socket, 'AF_CAN'):
 if not hasattr(socket, 'CAN_RAW'):
     socket.CAN_RAW = 1
 
-def send_random_can(iface="vcan0"):
+def send_random_can(iface="vcan0", interval=1.0):
     try:
         # 创建 CAN 原始套接字 - 注意这里使用 socket.CAN_RAW
         s = socket.socket(socket.AF_CAN, socket.SOCK_RAW, socket.CAN_RAW)
@@ -47,11 +48,18 @@ def send_random_can(iface="vcan0"):
             s.send(frame)
             print(f"已发送: ID=0x{can_id:03X} DLC={data_len} Data={data.hex(' ')}")
             
-            time.sleep(1)
+            time.sleep(interval)
     except KeyboardInterrupt:
         print("\n已停止发送。")
     finally:
         s.close()
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="以固定间隔向 CAN 接口发送随机帧")
+    parser.add_argument("--iface", default="vcan0", help="CAN 接口名称 (默认: vcan0)")
+    parser.add_argument("--interval", type=float, default=1.0, help="帧间隔秒数 (默认: 1.0)")
+    return parser.parse_args()
+
 if __name__ == "__main__":
-    send_random_can("vcan0")
+    args = parse_args()
+    send_random_can(args.iface, args.interval)
