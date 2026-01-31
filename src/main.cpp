@@ -47,14 +47,16 @@ int main(int argc, char **argv) {
         std::fprintf(stderr, "config error: at least one port entry is required\n");
         return 1;
     }
-    const PortConfig &port = config.ports.front();
-    if (port.channels.empty()) {
-        std::fprintf(stderr, "config error: port definition must include at least one channel\n");
+    std::size_t channel_count = 0;
+    for (const auto &port : config.ports) {
+        channel_count += port.channels.size();
+    }
+    if (channel_count == 0) {
+        std::fprintf(stderr, "config error: at least one channel entry is required\n");
         return 1;
     }
-    const ChannelConfig &channel = port.channels.front();
 
-    BridgeApp app(config.server, port, channel);
+    BridgeApp app(config);
     if (!app.initialize()) {
         return 1;
     }
