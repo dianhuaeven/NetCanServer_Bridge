@@ -11,10 +11,34 @@
           "vcan_name": "vcan0",
           "tx_channel_id": 0,
           "id_range": {
-            "min": "0x000",
-            "max": "0x7FF"
+            "min": "0x100",
+            "max": "0x1FF"
           },
           "bitrate": 500000
+        },
+        {
+          "vcan_name": "vcan1",
+          "tx_channel_id": 1,
+          "id_range": {
+            "min": "0x200",
+            "max": "0x2FF"
+          },
+          "bitrate": 500000
+        }
+      ]
+    },
+    {
+      "udp_listen_port": 5565,
+      "udp_send_port": 5566,
+      "channels": [
+        {
+          "vcan_name": "vcan2",
+          "tx_channel_id": 2,
+          "id_range": {
+            "min": "0x300",
+            "max": "0x37F"
+          },
+          "bitrate": 250000
         }
       ]
     }
