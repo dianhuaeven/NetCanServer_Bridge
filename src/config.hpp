@@ -24,8 +24,6 @@ struct PortConfig {
 
 struct ServerConfig {
     std::string ip;
-    std::uint32_t heartbeat_ms{0};
-    std::uint32_t reconnect_timeout_ms{0};
 };
 
 struct BridgeConfig {

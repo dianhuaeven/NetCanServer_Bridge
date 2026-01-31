@@ -32,9 +32,7 @@ cmake --build build
 ```json
 {
   "server": {
-    "ip": "127.0.0.1",
-    "heartbeat_ms": 1000,
-    "reconnect_timeout_ms": 5000
+    "ip": "127.0.0.1"
   },
   "ports": [
     {

@@ -54,26 +54,6 @@ bool parse_server(const Json::Value &node, ServerConfig &server, std::string &er
     }
     server.ip = ip.asString();
 
-    const auto parse_uint32_field = [&](const char *name, std::uint32_t &dest) -> bool {
-        const auto &value = node[name];
-        if (!value.isUInt()) {
-            error_message = std::string("server.") + name + " must be an unsigned integer";
-            return false;
-        }
-        dest = value.asUInt();
-        if (dest == 0) {
-            error_message = std::string("server.") + name + " must be > 0";
-            return false;
-        }
-        return true;
-    };
-
-    if (!parse_uint32_field("heartbeat_ms", server.heartbeat_ms)) {
-        return false;
-    }
-    if (!parse_uint32_field("reconnect_timeout_ms", server.reconnect_timeout_ms)) {
-        return false;
-    }
     return true;
 }
 
