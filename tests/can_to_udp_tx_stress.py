@@ -79,18 +79,25 @@ def can_sender_thread(iface):
             # 如果缓冲区满了，稍等一下
             time.sleep(0.01)
 
+def resolve_port(port_cfg, key):
+    return port_cfg.get(key) or port_cfg.get("udp_port")
+
 def main():
     if os.getuid() != 0:
         print("错误: 请使用 sudo 运行此脚本以访问 SocketCAN。")
         sys.exit(1)
 
     config = load_config()
-    vcan_iface = config['ports'][0]['channels'][0]['vcan_name']
+    port_cfg = config['ports'][0]
+    vcan_iface = port_cfg['channels'][0]['vcan_name']
     udp_ip = config['server']['ip']
-    udp_port = config['ports'][0]['udp_port']
+    udp_port = resolve_port(port_cfg, "udp_send_port")
+    if udp_port is None:
+        print("错误: 配置中缺少 udp_send_port/udp_port")
+        sys.exit(1)
 
     print(f"--- 桥接器 TX 路径全链路压测 ---")
-    print(f"流向: [Python] -> {vcan_iface} -> [Bridge] -> UDP {udp_port} -> [Python]")
+    print(f"流向: [Python] -> {vcan_iface} -> [Bridge] -> UDP {udp_ip}:{udp_port} -> [Python]")
     
     # 启动线程
     t_udp = threading.Thread(target=udp_monitor_thread, args=(udp_ip, udp_port), daemon=True)

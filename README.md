@@ -59,6 +59,13 @@ cmake --build build
 - `udp_send_port`：桥接程序向服务器发送的目的端口（TX）。
 - 若仅提供旧字段 `udp_port`，程序会将其同时用作监听与发送端口，保证向后兼容。
 
+### 配置快速校验
+构建后可以使用 `udp_config_validator` 进行静态检查：
+```bash
+./build/udp_config_validator config.json
+```
+若配置有效会输出 `Config OK`，否则会指出首个错误字段。
+
 ## 运行
 1. 准备 SocketCAN 接口（示例以 `vcan0` 为例）：
    ```bash

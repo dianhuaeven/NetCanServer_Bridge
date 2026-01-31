@@ -14,4 +14,10 @@ target_sources(udp_socketcan_bridge PRIVATE
 
 target_compile_options(udp_socketcan_bridge PRIVATE -fno-exceptions -fno-rtti -O2 -DNDEBUG)
 
-target_link_libraries(udp_socketcan_bridge PRIVATE rt)
+target_link_libraries(udp_socketcan_bridge PRIVATE rt jsoncpp)
+
+add_executable(udp_config_validator
+    src/config_validator.cpp
+    src/config.cpp)
+target_compile_options(udp_config_validator PRIVATE -fno-exceptions -fno-rtti -O2 -DNDEBUG)
+target_link_libraries(udp_config_validator PRIVATE jsoncpp)

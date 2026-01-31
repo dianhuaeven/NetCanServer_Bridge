@@ -78,20 +78,29 @@ def can_monitor_thread(iface):
         except Exception:
             break
 
+def resolve_listen_port(port_cfg):
+    return port_cfg.get("udp_listen_port") or port_cfg.get("udp_port")
+
 def main():
     if os.getuid() != 0:
         print("错误: 请使用 sudo 运行此脚本以访问 SocketCAN。")
         sys.exit(1)
 
     config = load_config()
-    vcan_iface = config['ports'][0]['channels'][0]['vcan_name']
-    udp_port = config['ports'][0]['udp_port']
+    port_cfg = config['ports'][0]
+    vcan_iface = port_cfg['channels'][0]['vcan_name']
+    udp_port = resolve_listen_port(port_cfg)
+    if udp_port is None:
+        print("错误: 配置中缺少 udp_listen_port/udp_port")
+        sys.exit(1)
+
+    udp_ip = config['server']['ip']
 
     print(f"--- 桥接器 RX 路径全链路压测 ---")
-    print(f"流向: [Python UDP 发送] -> UDP {udp_port} -> [Bridge] -> {vcan_iface} -> [Python CAN 接收]")
+    print(f"流向: [Python UDP 发送] -> UDP {udp_ip}:{udp_port} -> [Bridge] -> {vcan_iface} -> [Python CAN 接收]")
     
     # 启动线程
-    t_udp = threading.Thread(target=udp_sender_thread, args=("127.0.0.1", udp_port), daemon=True)
+    t_udp = threading.Thread(target=udp_sender_thread, args=(udp_ip, udp_port), daemon=True)
     t_can = threading.Thread(target=can_monitor_thread, args=(vcan_iface,), daemon=True)
     
     t_udp.start()

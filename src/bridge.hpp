@@ -11,7 +11,7 @@
 
 class BridgeApp {
 public:
-    explicit BridgeApp(const BridgeConfig &config);
+    BridgeApp(const ServerConfig &server, const PortConfig &port, const ChannelConfig &channel);
     ~BridgeApp();
 
     bool initialize();
@@ -26,7 +26,9 @@ private:
     void handle_udp_events();
     void handle_can_events();
 
-    BridgeConfig config_;
+    ServerConfig server_;
+    PortConfig port_;
+    ChannelConfig channel_;
     int udp_fd_;
     int can_fd_;
     int epoll_fd_;

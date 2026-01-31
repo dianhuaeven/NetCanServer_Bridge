@@ -35,8 +35,10 @@ void close_fd(int &fd) {
 
 } // namespace
 
-BridgeApp::BridgeApp(const BridgeConfig &config)
-    : config_(config),
+BridgeApp::BridgeApp(const ServerConfig &server, const PortConfig &port, const ChannelConfig &channel)
+    : server_(server),
+      port_(port),
+      channel_(channel),
       udp_fd_(-1),
       can_fd_(-1),
       epoll_fd_(-1),
@@ -122,7 +124,7 @@ bool BridgeApp::configure_udp_socket() {
     sockaddr_in local{};
     local.sin_family = AF_INET;
     local.sin_addr.s_addr = INADDR_ANY;
-    local.sin_port = htons(config_.listen_port);
+    local.sin_port = htons(port_.listen_port);
     if (bind(udp_fd_, reinterpret_cast<sockaddr *>(&local), sizeof(local)) < 0) {
         std::perror("failed to bind UDP socket (RX will not work without this)");
         return false;
@@ -130,15 +132,15 @@ bool BridgeApp::configure_udp_socket() {
 
     sockaddr_in remote{};
     remote.sin_family = AF_INET;
-    remote.sin_port = htons(config_.send_port);
-    if (inet_pton(AF_INET, config_.server_ip.data(), &remote.sin_addr) != 1) {
-        std::fprintf(stderr, "invalid server ip address: %s\n", config_.server_ip.data());
+    remote.sin_port = htons(port_.send_port);
+    if (inet_pton(AF_INET, server_.ip.c_str(), &remote.sin_addr) != 1) {
+        std::fprintf(stderr, "invalid server ip address: %s\n", server_.ip.c_str());
         return false;
     }
     remote_addr_ = remote;
 
     std::printf("[UDP] Listening on 0.0.0.0:%d; default remote %s:%d\n",
-                config_.listen_port, config_.server_ip.data(), config_.send_port);
+                port_.listen_port, server_.ip.c_str(), port_.send_port);
     return true;
 }
 
@@ -149,7 +151,7 @@ bool BridgeApp::configure_can_socket() {
     }
 
     ifreq ifr{};
-    std::strncpy(ifr.ifr_name, config_.vcan_name.data(), sizeof(ifr.ifr_name));
+    std::strncpy(ifr.ifr_name, channel_.vcan_name.c_str(), sizeof(ifr.ifr_name));
     ifr.ifr_name[sizeof(ifr.ifr_name) - 1] = '\0';
     if (ioctl(can_fd_, SIOCGIFINDEX, &ifr) < 0) {
         std::perror("failed to lookup CAN interface");

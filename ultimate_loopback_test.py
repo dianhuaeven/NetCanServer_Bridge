@@ -4,57 +4,38 @@ import time
 import sys
 import os
 import random
-import json
-
-def load_config():
-    try:
-        with open("config.json", "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print("错误: config.json 未找到")
-        sys.exit(1)
-
-def resolve_port(port_cfg, key):
-    return port_cfg.get(key) or port_cfg.get("udp_port")
 
 # --- 协议定义 ---
 UDP_FMT = ">BI8s"  # 13字节大端序 UDP
 CAN_FMT = "=IB3s8s" # 16字节标准 CAN (Linux 内核格式)
 
 def run_ping_pong_test():
-    config = load_config()
-    port_cfg = config["ports"][0]
-    channel_cfg = port_cfg["channels"][0]
-    bridge_listen_port = resolve_port(port_cfg, "udp_listen_port")
-    script_listen_port = resolve_port(port_cfg, "udp_send_port")
-    server_ip = config["server"]["ip"]
-    vcan_iface = channel_cfg["vcan_name"]
-    if bridge_listen_port is None or script_listen_port is None:
-        print("错误: 配置缺少 udp_listen_port/udp_send_port")
-        return
+    # --- 配置参数 ---
+    BRIDGE_LISTEN_PORT = 5555 
+    SCRIPT_LISTEN_PORT = 5556
+    VCAN_IFACE = "vcan0"
 
     # 1. 初始化 UDP 套接字
     udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
-        udp_sock.bind(("0.0.0.0", script_listen_port))
+        udp_sock.bind(("127.0.0.1", SCRIPT_LISTEN_PORT))
         udp_sock.settimeout(0.5) 
     except Exception as e:
-        print(f"错误: 无法绑定 UDP 端口 {script_listen_port}: {e}")
+        print(f"错误: 无法绑定 UDP 端口 {SCRIPT_LISTEN_PORT}: {e}")
         return
 
     # 2. 初始化 CAN 套接字
     try:
         can_sock = socket.socket(socket.AF_CAN, socket.SOCK_RAW, socket.CAN_RAW)
-        can_sock.bind((vcan_iface,))
+        can_sock.bind((VCAN_IFACE,))
         can_sock.settimeout(0.5)
     except Exception as e:
-        print(f"错误: 无法连接 CAN 接口 {vcan_iface}: {e}")
+        print(f"错误: 无法连接 CAN 接口 {VCAN_IFACE}: {e}")
         return
 
     print(f"--- 乒乓全链路回环测试 (带带宽显示) ---")
-    print(f"路径: CAN({vcan_iface}) -> Bridge(send→UDP {server_ip}:{script_listen_port}) -> "
-          f"脚本UDP -> Bridge(listen {server_ip}:{bridge_listen_port}) -> CAN")
+    print(f"路径: 脚本(CAN) -> 桥接器 -> 脚本(UDP) -> 桥接器 -> 脚本(CAN)")
     print("-" * 60)
 
     # 统计数据
@@ -90,8 +71,8 @@ def run_ping_pong_test():
                 stats["timeout"] += 1
                 continue
 
-            # --- 步骤 3: 原封不动发回桥接器 (往配置监听端口发送) ---
-            udp_sock.sendto(udp_pkt, (server_ip, bridge_listen_port))
+            # --- 步骤 3: 原封不动发回桥接器 (往 5555 发) ---
+            udp_sock.sendto(udp_pkt, ("127.0.0.1", BRIDGE_LISTEN_PORT))
 
             # --- 步骤 4: 等待 CAN 回传 (从 vcan0 收) ---
             found_echo = False
@@ -137,7 +118,7 @@ def run_ping_pong_test():
                 last_report_time = now
             
             # 如果想测试极限速率，可以减小 sleep 或删掉它
-            time.sleep(0.00001)
+            #time.sleep(0.000001)
 
     except KeyboardInterrupt:
         duration = time.time() - start_time
