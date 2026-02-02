@@ -1,11 +1,12 @@
 #include "bridge.hpp"
 #include "config.hpp"
 
+#include <atomic>
 #include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <string>
-#include <atomic>
+#include <syslog.h>
 
 namespace {
 
@@ -56,16 +57,21 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    openlog("udp_socketcan_bridge", LOG_PID | LOG_CONS, LOG_DAEMON);
+
     BridgeApp app(config);
     if (!app.initialize()) {
+        syslog(LOG_ERR, "bridge initialization failed");
+        closelog();
         return 1;
     }
 
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
-    std::printf("Bridge is running. Press Ctrl+C to stop.\n");
+    syslog(LOG_INFO, "Bridge is running");
     app.run(g_keep_running);
-    std::printf("Shutting down...\n");
+    syslog(LOG_INFO, "Shutting down");
+    closelog();
     return 0;
 }

@@ -7,7 +7,6 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <vector>
 
 #include <netinet/in.h>
 
@@ -25,6 +24,9 @@ private:
         Can = 2,
     };
 
+    static constexpr std::size_t kMaxUdpPorts = 8;
+    static constexpr std::size_t kMaxChannels = 32;
+    static constexpr std::size_t kMaxEvents = kMaxUdpPorts + kMaxChannels;
     static constexpr std::size_t kInvalidChannelIndex = static_cast<std::size_t>(-1);
 
     struct UdpPortContext {
@@ -47,6 +49,7 @@ private:
 
     bool configure_udp_socket(UdpPortContext &context);
     bool configure_can_socket(ChannelContext &context);
+    bool prepare_can_interface(const ChannelConfig &config) const;
     bool register_event(EventType type, std::uint32_t index, int fd);
     void shutdown();
 
@@ -61,8 +64,11 @@ private:
 
     BridgeConfig config_;
     int epoll_fd_;
-    std::vector<UdpPortContext> udp_ports_;
-    std::vector<ChannelContext> channels_;
-    std::vector<RangeLookup> id_lookup_;
+    std::array<UdpPortContext, kMaxUdpPorts> udp_ports_;
+    std::array<ChannelContext, kMaxChannels> channels_;
+    std::array<RangeLookup, kMaxChannels> id_lookup_;
+    std::size_t udp_port_count_;
+    std::size_t channel_count_;
+    std::size_t id_lookup_count_;
     std::array<std::uint8_t, kUdpFrameSize> tx_buffer_;
 };
