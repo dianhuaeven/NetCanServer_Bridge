@@ -57,50 +57,67 @@ if [[ ${#VCAN_NAMES[@]} -eq 0 ]]; then
   exit 1
 fi
 
-modprobe vcan >/dev/null 2>&1 || true
+# 确保 vcan 模块已加载，如果失败则报错
+modprobe vcan || echo "[bridge] Warning: modprobe vcan failed, ifaces might not be created."
 
 CREATED_IFACES=()
+
+# 清理函数
+cleanup() {
+  # 禁用 trap 以防止递归触发
+  trap - EXIT INT TERM
+  
+  echo ""
+  echo "[bridge] Cleaning up resources..."
+  
+  # 1. 停止桥接程序
+  if [[ -n "${BRIDGE_PID:-}" ]]; then
+    if kill -0 "${BRIDGE_PID}" 2>/dev/null; then
+      echo "[bridge] Stopping udp_socketcan_bridge (PID: ${BRIDGE_PID})"
+      kill "${BRIDGE_PID}" 2>/dev/null || true
+      wait "${BRIDGE_PID}" 2>/dev/null || true
+    fi
+    BRIDGE_PID=""
+  fi
+
+  # 2. 移除创建的虚拟接口
+  for if_name in "${CREATED_IFACES[@]}"; do
+    if ip link show "${if_name}" >/dev/null 2>&1; then
+      echo "[bridge] Removing interface: ${if_name}"
+      ip link delete "${if_name}" 2>/dev/null || true
+    fi
+  done
+  echo "[bridge] Cleanup complete."
+}
+
+# 关键修改：绑定 EXIT 信号
+trap cleanup EXIT INT TERM
 
 create_iface() {
   local if_name="$1"
   if ip link show "${if_name}" >/dev/null 2>&1; then
     echo "[bridge] ${if_name} already exists"
   else
-    echo "[bridge] creating ${if_name}"
+    echo "[bridge] Creating ${if_name}"
+    # 如果这里报错，set -e 会触发脚本退出，进而触发 trap cleanup
     ip link add dev "${if_name}" type vcan
     CREATED_IFACES+=("${if_name}")
   fi
-  echo "[bridge] bringing ${if_name} up"
+  echo "[bridge] Bringing ${if_name} up"
   ip link set "${if_name}" up
 }
 
-cleanup() {
-  local exit_code="${1:-0}"
-  if [[ -n "${BRIDGE_PID:-}" ]]; then
-    if kill -0 "${BRIDGE_PID}" >/dev/null 2>&1; then
-      kill "${BRIDGE_PID}" >/dev/null 2>&1 || true
-      wait "${BRIDGE_PID}" >/dev/null 2>&1 || true
-    fi
-    BRIDGE_PID=""
-  fi
-  for if_name in "${CREATED_IFACES[@]}"; do
-    echo "[bridge] removing ${if_name}"
-    ip link delete "${if_name}" type vcan >/dev/null 2>&1 || true
-  done
-  exit "${exit_code}"
-}
-
-trap 'cleanup 0' INT TERM
-
+# 依次创建接口
 for if_name in "${VCAN_NAMES[@]}"; do
   create_iface "${if_name}"
 done
 
-echo "[bridge] starting udp_socketcan_bridge"
+echo "[bridge] Starting udp_socketcan_bridge"
+# 启动程序
 "${BRIDGE_BIN}" --config "${CONFIG_PATH}" &
 BRIDGE_PID=$!
 
+# 等待程序运行
+# 如果程序因为 "Operation not supported" 退出，wait 会返回非零值
+# 随后 set -e 会终止脚本，触发上面的 cleanup 函数
 wait "${BRIDGE_PID}"
-status=$?
-BRIDGE_PID=""
-cleanup "${status}"
